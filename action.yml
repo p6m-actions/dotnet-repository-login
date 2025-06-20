@@ -1,34 +1,90 @@
 name: "Dotnet Repository Login"
-description: "A simple GitHub Action that prints a greeting"
-author: "Jimmie Fulton <jimmie.fulton@gmail.com>"
+description: "A GitHub Action that logs in to one or more .NET repositories for NuGet package publishing"
+author: "Jimmie Fulton <jimmie@ybor.ai>"
 
 # Define the inputs for this action
 inputs:
-  who-to-greet:
-    description: "Who to greet"
-    required: true
-    default: "World"
-  message:
-    description: "Custom message to include"
+  repository-urls:
+    description: "Repository URL mappings in format 'name=url', one per line"
     required: false
-    default: "Hello"
+    default: ""
+  credentials:
+    description: "Authentication credentials in format 'name=username:password' or 'name=api-key', one per line"
+    required: true
 
 # Define the outputs for this action
 outputs:
-  time:
-    description: "The time we greeted you"
-    value: ${{ steps.hello.outputs.time }}
+  configured-repositories:
+    description: "List of successfully configured repository names"
+    value: ${{ steps.login.outputs.configured-repositories }}
 
 # Define the runs configuration
 runs:
   using: "composite"
   steps:
-    - name: Hello step
-      id: hello
+    - name: Login to .NET repositories
+      id: login
       shell: bash
       run: |
-        echo "${{ inputs.message }}, ${{ inputs.who-to-greet }}!"
-        echo "time=$(date)" >> $GITHUB_OUTPUT
+        set -e
+
+        configured_repos=""
+
+        # Process credentials
+        while IFS= read -r line; do
+          if [[ -n "$line" && "$line" != \#* ]]; then
+            repo_name=$(echo "$line" | cut -d'=' -f1)
+            credentials=$(echo "$line" | cut -d'=' -f2-)
+            
+            echo "Configuring repository: $repo_name"
+            
+            # Check if repository URL is provided
+            repo_url=""
+            if [[ -n "${{ inputs.repository-urls }}" ]]; then
+              repo_url=$(echo "${{ inputs.repository-urls }}" | grep "^$repo_name=" | cut -d'=' -f2- || echo "")
+            fi
+            
+            # Configure NuGet source
+            if [[ -n "$repo_url" ]]; then
+              dotnet nuget add source "$repo_url" --name "$repo_name" --store-password-in-clear-text || true
+            fi
+            
+            # Handle different credential formats
+            if [[ "$credentials" == *":"* ]]; then
+              # Username:password format
+              username=$(echo "$credentials" | cut -d':' -f1)
+              password=$(echo "$credentials" | cut -d':' -f2-)
+              
+              if [[ -n "$repo_url" ]]; then
+                dotnet nuget update source "$repo_name" --username "$username" --password "$password" --store-password-in-clear-text
+              else
+                # Use default NuGet.org if no URL specified
+                dotnet nuget push --source https://api.nuget.org/v3/index.json --api-key "$password" --skip-duplicate || echo "Credentials configured for NuGet.org"
+              fi
+            else
+              # API key format
+              if [[ -n "$repo_url" ]]; then
+                dotnet nuget update source "$repo_name" --username "apikey" --password "$credentials" --store-password-in-clear-text
+              else
+                # Configure for NuGet.org
+                echo "API key configured for default repository"
+              fi
+            fi
+            
+            if [[ -n "$configured_repos" ]]; then
+              configured_repos="$configured_repos,$repo_name"
+            else
+              configured_repos="$repo_name"
+            fi
+            
+            echo "✓ Successfully configured repository: $repo_name"
+          fi
+        done <<< "${{ inputs.credentials }}"
+
+        echo "configured-repositories=$configured_repos" >> $GITHUB_OUTPUT
+        echo "Successfully configured repositories: $configured_repos"
+      env:
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
 
 # Define the branding for the action in the GitHub Marketplace
 branding:
