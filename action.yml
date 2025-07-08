@@ -4,19 +4,24 @@ author: "Jimmie Fulton <jimmie@ybor.ai>"
 
 # Define the inputs for this action
 inputs:
-  repository-urls:
-    description: "Repository URL mappings in format 'name=url', one per line"
-    required: false
-    default: ""
-  credentials:
-    description: "Authentication credentials in format 'name=username:password' or 'name=api-key', one per line"
+  repository:
+    description: "Repository name to configure"
+    required: true
+  repository-url:
+    description: "Full repository URL (e.g., https://api.nuget.org/v3/index.json, https://mycompany.jfrog.io/artifactory/api/nuget/repo-name)"
+    required: true
+  username:
+    description: "Username for repository authentication"
+    required: true
+  password:
+    description: "Password/token for repository authentication"
     required: true
 
 # Define the outputs for this action
 outputs:
-  configured-repositories:
-    description: "List of successfully configured repository names"
-    value: ${{ steps.login.outputs.configured-repositories }}
+  configured-repository:
+    description: "Name of successfully configured repository"
+    value: ${{ steps.login.outputs.configured-repository }}
 
 # Define the runs configuration
 runs:
@@ -28,61 +33,18 @@ runs:
       run: |
         set -e
 
-        configured_repos=""
+        repo_name="${{ inputs.repository }}"
+        repo_url="${{ inputs.repository-url }}"
+        username="${{ inputs.username }}"
+        password="${{ inputs.password }}"
 
-        # Process credentials
-        while IFS= read -r line; do
-          if [[ -n "$line" && "$line" != \#* ]]; then
-            repo_name=$(echo "$line" | cut -d'=' -f1)
-            credentials=$(echo "$line" | cut -d'=' -f2-)
-            
-            echo "Configuring repository: $repo_name"
-            
-            # Check if repository URL is provided
-            repo_url=""
-            if [[ -n "${{ inputs.repository-urls }}" ]]; then
-              repo_url=$(echo "${{ inputs.repository-urls }}" | grep "^$repo_name=" | cut -d'=' -f2- || echo "")
-            fi
-            
-            # Configure NuGet source
-            if [[ -n "$repo_url" ]]; then
-              dotnet nuget add source "$repo_url" --name "$repo_name" --store-password-in-clear-text || true
-            fi
-            
-            # Handle different credential formats
-            if [[ "$credentials" == *":"* ]]; then
-              # Username:password format
-              username=$(echo "$credentials" | cut -d':' -f1)
-              password=$(echo "$credentials" | cut -d':' -f2-)
-              
-              if [[ -n "$repo_url" ]]; then
-                dotnet nuget update source "$repo_name" --username "$username" --password "$password" --store-password-in-clear-text
-              else
-                # Use default NuGet.org if no URL specified
-                dotnet nuget push --source https://api.nuget.org/v3/index.json --api-key "$password" --skip-duplicate || echo "Credentials configured for NuGet.org"
-              fi
-            else
-              # API key format
-              if [[ -n "$repo_url" ]]; then
-                dotnet nuget update source "$repo_name" --username "apikey" --password "$credentials" --store-password-in-clear-text
-              else
-                # Configure for NuGet.org
-                echo "API key configured for default repository"
-              fi
-            fi
-            
-            if [[ -n "$configured_repos" ]]; then
-              configured_repos="$configured_repos,$repo_name"
-            else
-              configured_repos="$repo_name"
-            fi
-            
-            echo "✓ Successfully configured repository: $repo_name"
-          fi
-        done <<< "${{ inputs.credentials }}"
+        echo "Configuring repository: $repo_name"
 
-        echo "configured-repositories=$configured_repos" >> $GITHUB_OUTPUT
-        echo "Successfully configured repositories: $configured_repos"
+        # Configure NuGet source
+        dotnet nuget add source "$repo_url" --name "$repo_name" --username "$username" --password "$password" --store-password-in-clear-text
+
+        echo "configured-repository=$repo_name" >> $GITHUB_OUTPUT
+        echo "✓ Successfully configured repository: $repo_name at $repo_url"
       env:
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
 

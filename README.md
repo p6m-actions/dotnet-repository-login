@@ -4,74 +4,67 @@
 
 ## Description
 
-A GitHub Action that logs in to one or more .NET repositories for NuGet package publishing. This action configures NuGet sources and authentication credentials, making it easy to publish packages to private repositories or NuGet.org as part of your CI/CD pipeline.
+A GitHub Action that logs in to a .NET repository for NuGet package publishing. This action configures NuGet sources and authentication credentials, making it easy to publish packages to private repositories as part of your CI/CD pipeline.
 
 ## Usage
 
 ```yaml
 - uses: p6m-actions/dotnet-repository-login@v1
   with:
-    repository-urls: |
-      private=https://nuget.mycompany.com/v3/index.json
-      staging=https://nuget-staging.mycompany.com/v3/index.json
-    credentials: |
-      private=username:${{ secrets.PRIVATE_REPO_PASSWORD }}
-      staging=${{ secrets.STAGING_API_KEY }}
-      nuget=${{ secrets.NUGET_API_KEY }}
+    repository: ${{ github.repository_owner }}-nuget
+    repository-url: https://mycompany.jfrog.io/artifactory/api/nuget/${{ github.repository_owner }}-nuget
+    username: ${{ secrets.ARTIFACTORY_USERNAME }}
+    password: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
 ```
 
 ## Inputs
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
-| `repository-urls` | Repository URL mappings in format `name=url`, one per line | No | `""` |
-| `credentials` | Authentication credentials in format `name=username:password` or `name=api-key`, one per line | Yes | N/A |
-
-### Credential Formats
-
-- **API Key**: `repository-name=your-api-key`
-- **Username/Password**: `repository-name=username:password`
+| `repository` | Repository name to configure | Yes | N/A |
+| `repository-url` | Full repository URL (e.g., https://api.nuget.org/v3/index.json, https://mycompany.jfrog.io/artifactory/api/nuget/repo-name) | Yes | N/A |
+| `username` | Username for repository authentication | Yes | N/A |
+| `password` | Password/token for repository authentication | Yes | N/A |
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `configured-repositories` | Comma-separated list of successfully configured repository names |
+| `configured-repository` | Name of successfully configured repository |
 
 ## Examples
 
-### Basic NuGet.org Publishing
+### Artifactory Repository
 
 ```yaml
 - uses: p6m-actions/dotnet-repository-login@v1
   with:
-    credentials: |
-      nuget=${{ secrets.NUGET_API_KEY }}
+    repository: ${{ github.repository_owner }}-nuget
+    repository-url: https://mycompany.jfrog.io/artifactory/api/nuget/${{ github.repository_owner }}-nuget
+    username: ${{ secrets.ARTIFACTORY_USERNAME }}
+    password: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
 ```
 
-### Multiple Private Repositories
+### NuGet.org
 
 ```yaml
 - uses: p6m-actions/dotnet-repository-login@v1
   with:
-    repository-urls: |
-      private=https://nuget.mycompany.com/v3/index.json
-      staging=https://nuget-staging.mycompany.com/v3/index.json
-    credentials: |
-      private=service-account:${{ secrets.PRIVATE_REPO_PASSWORD }}
-      staging=${{ secrets.STAGING_API_KEY }}
+    repository: nuget-org
+    repository-url: https://api.nuget.org/v3/index.json
+    username: apikey
+    password: ${{ secrets.NUGET_API_KEY }}
 ```
 
-### Mixed Authentication Methods
+### Private NuGet Server
 
 ```yaml
 - uses: p6m-actions/dotnet-repository-login@v1
   with:
-    repository-urls: |
-      artifactory=https://mycompany.jfrog.io/artifactory/api/nuget/nuget-local
-    credentials: |
-      artifactory=admin:${{ secrets.ARTIFACTORY_PASSWORD }}
-      nuget=${{ secrets.NUGET_API_KEY }}
+    repository: private-nuget
+    repository-url: https://nuget.mycompany.com/v3/index.json
+    username: ${{ secrets.PRIVATE_REPO_USERNAME }}
+    password: ${{ secrets.PRIVATE_REPO_PASSWORD }}
 ```
 
 ## Security Recommendations
