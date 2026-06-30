@@ -13,8 +13,8 @@ A GitHub Action that logs in to a .NET repository for NuGet package publishing. 
   with:
     repository: ${{ github.repository_owner }}-nuget
     repository-url: https://mycompany.jfrog.io/artifactory/api/nuget/${{ github.repository_owner }}-nuget
-    username: ${{ secrets.ARTIFACTORY_USERNAME }}
-    password: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
+    username: ${{ secrets.P6M_ARTIFACTORY_USERNAME }}
+    password: ${{ secrets.P6M_ARTIFACTORY_IDENTITY_TOKEN }}
 ```
 
 ## Inputs
@@ -41,8 +41,8 @@ A GitHub Action that logs in to a .NET repository for NuGet package publishing. 
   with:
     repository: ${{ github.repository_owner }}-nuget
     repository-url: https://mycompany.jfrog.io/artifactory/api/nuget/${{ github.repository_owner }}-nuget
-    username: ${{ secrets.ARTIFACTORY_USERNAME }}
-    password: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
+    username: ${{ secrets.P6M_ARTIFACTORY_USERNAME }}
+    password: ${{ secrets.P6M_ARTIFACTORY_IDENTITY_TOKEN }}
 ```
 
 ### NuGet.org
